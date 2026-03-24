@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar'
 import ProbabilityBar from '@/components/ProbabilityBar'
 import TradePanel from '@/components/TradePanel'
 import SparklineChart from '@/components/SparklineChart'
-import type { Market, TradeWithUser } from '@/lib/types'
+import type { Market, MarketOption, TradeWithUser } from '@/lib/types'
 
 export const revalidate = 30
 
@@ -42,8 +42,18 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
   if (!market) notFound()
 
   const m = market as Market
-  const total = m.yes_pool + m.no_pool
-  const yesPct = total === 0 ? 50 : Math.round((m.yes_pool / total) * 100)
+  const isMulti = m.market_type === 'multi'
+
+  // Fetch options for multi markets
+  let options: MarketOption[] = []
+  if (isMulti) {
+    const { data: opts } = await supabase
+      .from('market_options')
+      .select('*')
+      .eq('market_id', id)
+      .order('ord', { ascending: true })
+    options = (opts ?? []) as MarketOption[]
+  }
 
   // Fetch trades ascending for sparkline; reverse for display
   const { data: trades } = await supabase
@@ -66,9 +76,12 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
   const allTrades = (trades ?? []) as TradeWithUser[]
   const activity = [...allTrades].reverse().slice(0, 20)
 
-  // Reconstruct price history from trades
+  // Binary-only: probability and sparkline
+  const binaryTotal = m.yes_pool + m.no_pool
+  const yesPct = binaryTotal === 0 ? 50 : Math.round((m.yes_pool / binaryTotal) * 100)
+
   const sparklineData: number[] = (() => {
-    if (allTrades.length === 0) return []
+    if (isMulti || allTrades.length === 0) return []
     const yesSum = allTrades.filter(t => t.position === 'yes').reduce((s, t) => s + t.amount_oc, 0)
     const noSum = allTrades.filter(t => t.position === 'no').reduce((s, t) => s + t.amount_oc, 0)
     let yp = m.yes_pool - yesSum
@@ -83,6 +96,15 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
     }
     return pts
   })()
+
+  // Multi: total volume
+  const multiTotal = isMulti ? options.reduce((s, o) => s + o.pool, 0) : 0
+  const totalVolume = isMulti ? multiTotal : binaryTotal
+
+  // Resolved outcome label for multi
+  const resolvedMultiLabel = isMulti && m.outcome
+    ? options.find(o => o.id === m.outcome)?.label ?? m.outcome
+    : null
 
   return (
     <div className="min-h-screen">
@@ -99,6 +121,11 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
                 <span className="text-xs text-zinc-500 border border-zinc-700 rounded-full px-2 py-0.5">
                   {m.category}
                 </span>
+                {isMulti && (
+                  <span className="text-xs text-zinc-400 border border-zinc-700 rounded-full px-2 py-0.5">
+                    multi-choice
+                  </span>
+                )}
                 {m.status === 'open' && (
                   <span className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-full px-2 py-0.5">
                     Open · closes {formatDate(m.closes_at)}
@@ -109,9 +136,13 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
                     Closed
                   </span>
                 )}
-                {m.status === 'resolved' && m.outcome && (
-                  <span className={`text-xs border rounded-full px-2 py-0.5 ${OUTCOME_BADGE[m.outcome]}`}>
-                    Resolved: {m.outcome.toUpperCase()}
+                {m.status === 'resolved' && (
+                  <span className={`text-xs border rounded-full px-2 py-0.5 ${
+                    isMulti
+                      ? 'bg-accent/10 text-accent border-accent/20'
+                      : OUTCOME_BADGE[m.outcome ?? ''] ?? ''
+                  }`}>
+                    Resolved: {isMulti ? resolvedMultiLabel : m.outcome?.toUpperCase() ?? 'N/A'}
                   </span>
                 )}
               </div>
@@ -121,34 +152,76 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
               </h1>
             </div>
 
-            {/* Probability */}
+            {/* Probability / options display */}
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
-              <div className="flex items-end justify-between">
-                <div>
-                  <div className="text-4xl font-black text-green-400">{yesPct}%</div>
-                  <div className="text-sm text-zinc-400">chance of YES</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-zinc-200">{total.toLocaleString()} OC</div>
-                  <div className="text-sm text-zinc-400">total volume</div>
-                </div>
-              </div>
-              <ProbabilityBar yesPool={m.yes_pool} noPool={m.no_pool} size="lg" />
-              {sparklineData.length >= 2 && (
-                <div className="pt-2">
-                  <SparklineChart data={sparklineData} height={80} showLabels />
-                </div>
+              {isMulti ? (
+                <>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className="text-sm text-zinc-400">{options.length} options</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-zinc-200">{multiTotal.toLocaleString()} OC</div>
+                      <div className="text-sm text-zinc-400">total volume</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {options.map((opt) => {
+                      const pct = multiTotal === 0 ? Math.round(100 / options.length) : Math.round((opt.pool / multiTotal) * 100)
+                      const isWinner = m.status === 'resolved' && m.outcome === opt.id
+                      return (
+                        <div key={opt.id} className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className={`font-medium ${isWinner ? 'text-accent' : 'text-zinc-200'}`}>
+                              {opt.label}
+                              {isWinner && <span className="ml-1.5 text-xs text-accent">✓ winner</span>}
+                            </span>
+                            <div className="flex items-center gap-3 text-xs text-zinc-400">
+                              <span>{opt.pool.toLocaleString()} OC</span>
+                              <span className="font-semibold text-zinc-200">{pct}%</span>
+                            </div>
+                          </div>
+                          <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${isWinner ? 'bg-accent' : 'bg-zinc-600'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className="text-4xl font-black text-green-400">{yesPct}%</div>
+                      <div className="text-sm text-zinc-400">chance of YES</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-zinc-200">{totalVolume.toLocaleString()} OC</div>
+                      <div className="text-sm text-zinc-400">total volume</div>
+                    </div>
+                  </div>
+                  <ProbabilityBar yesPool={m.yes_pool} noPool={m.no_pool} size="lg" />
+                  {sparklineData.length >= 2 && (
+                    <div className="pt-2">
+                      <SparklineChart data={sparklineData} height={80} showLabels />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3 pt-1 text-sm">
+                    <div className="rounded-lg bg-green-500/5 border border-green-500/10 p-3">
+                      <div className="text-green-400 font-semibold">{m.yes_pool.toLocaleString()} OC</div>
+                      <div className="text-zinc-500 text-xs">YES pool</div>
+                    </div>
+                    <div className="rounded-lg bg-red-500/5 border border-red-500/10 p-3">
+                      <div className="text-red-400 font-semibold">{m.no_pool.toLocaleString()} OC</div>
+                      <div className="text-zinc-500 text-xs">NO pool</div>
+                    </div>
+                  </div>
+                </>
               )}
-              <div className="grid grid-cols-2 gap-3 pt-1 text-sm">
-                <div className="rounded-lg bg-green-500/5 border border-green-500/10 p-3">
-                  <div className="text-green-400 font-semibold">{m.yes_pool.toLocaleString()} OC</div>
-                  <div className="text-zinc-500 text-xs">YES pool</div>
-                </div>
-                <div className="rounded-lg bg-red-500/5 border border-red-500/10 p-3">
-                  <div className="text-red-400 font-semibold">{m.no_pool.toLocaleString()} OC</div>
-                  <div className="text-zinc-500 text-xs">NO pool</div>
-                </div>
-              </div>
             </div>
 
             {/* Description */}
@@ -163,7 +236,18 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
             {m.resolution_criteria && (
               <div className="space-y-2">
                 <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wide">Resolution criteria</h2>
-                <p className="text-zinc-300 leading-relaxed">{m.resolution_criteria}</p>
+                <div className="text-zinc-300 leading-relaxed space-y-1">
+                  {m.resolution_criteria.split('\n').map((line, i) => {
+                    const bullet = line.match(/^[-*]\s+(.*)/);
+                    if (bullet) return (
+                      <div key={i} className="flex gap-2 pl-2">
+                        <span className="text-zinc-400 shrink-0">•</span>
+                        <span>{bullet[1]}</span>
+                      </div>
+                    );
+                    return line ? <p key={i}>{line}</p> : <br key={i} />;
+                  })}
+                </div>
               </div>
             )}
 
@@ -174,31 +258,30 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
                 <p className="text-zinc-500 text-sm">No trades yet. Be the first!</p>
               ) : (
                 <div className="space-y-2">
-                  {activity.map((trade) => (
-                    <div
-                      key={trade.id}
-                      className="flex items-center justify-between text-sm py-2 border-b border-zinc-800"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-xs font-bold rounded px-1.5 py-0.5 ${
-                            trade.position === 'yes'
-                              ? 'text-green-400 bg-green-500/10'
-                              : 'text-red-400 bg-red-500/10'
-                          }`}
-                        >
-                          {trade.position.toUpperCase()}
-                        </span>
-                        <span className="text-zinc-300">
-                          {trade.users?.username ?? 'Anonymous'}
-                        </span>
+                  {activity.map((trade) => {
+                    const positionLabel = isMulti
+                      ? (options.find(o => o.id === trade.position)?.label ?? trade.position.slice(0, 8))
+                      : trade.position.toUpperCase()
+                    return (
+                      <div
+                        key={trade.id}
+                        className="flex items-center justify-between text-sm py-2 border-b border-zinc-800"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold rounded px-1.5 py-0.5 text-accent bg-accent/10">
+                            {positionLabel}
+                          </span>
+                          <span className="text-zinc-300">
+                            {trade.users?.username ?? 'Anonymous'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-zinc-500">
+                          <span className="text-accent">{trade.amount_oc.toLocaleString()} OC</span>
+                          <span className="text-xs">{timeAgo(trade.created_at)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-zinc-500">
-                        <span className="text-accent">{trade.amount_oc.toLocaleString()} OC</span>
-                        <span className="text-xs">{timeAgo(trade.created_at)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -208,6 +291,7 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
           <div className="lg:sticky lg:top-20 h-fit">
             <TradePanel
               market={m}
+              options={isMulti ? options : undefined}
               userBalance={userBalance}
               isAuthenticated={!!user}
             />
