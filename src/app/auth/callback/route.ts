@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ALLOWED_DOMAIN = '@smail.iitm.ac.in'
+const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN || '@smail.iitm.ac.in'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
