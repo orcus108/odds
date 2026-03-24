@@ -105,7 +105,7 @@ export default async function HomePage() {
         ) : (
           <div className="py-10">
             <div className="space-y-1 mb-8">
-              <h2 className="text-xl font-bold text-zinc-100">Active Markets</h2>
+              <h1 className="text-2xl font-bold text-zinc-100">Active Markets</h1>
               <p className="text-sm text-zinc-500">Click any market to trade</p>
             </div>
 

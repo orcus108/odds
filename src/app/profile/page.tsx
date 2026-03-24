@@ -97,7 +97,7 @@ export default async function ProfilePage() {
               No trades yet. <Link href="/" className="text-accent hover:underline">Browse markets →</Link>
             </div>
           ) : (
-            <div className="rounded-2xl border border-zinc-800 overflow-hidden">
+            <div className="rounded-2xl border border-zinc-800 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800 bg-zinc-900/80">
