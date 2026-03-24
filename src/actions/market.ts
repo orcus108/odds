@@ -20,7 +20,6 @@ export async function createMarket(formData: FormData) {
 
   if (!userData?.is_admin) redirect('/')
 
-  const ALLOWED_CATEGORIES = ['Academics', 'Placements', 'Campus Life', 'Sports', 'Events', 'Other']
   const MAX_SEED = 1_000_000
 
   const title = (formData.get('title') as string)?.trim()
@@ -28,29 +27,80 @@ export async function createMarket(formData: FormData) {
   const resolution_criteria = (formData.get('resolution_criteria') as string)?.trim()
   const category = (formData.get('category') as string)?.trim()
   const closes_at = formData.get('closes_at') as string
-  const seedYes = parseInt(formData.get('seed_yes') as string)
-  const seedNo = parseInt(formData.get('seed_no') as string)
+  const market_type = (formData.get('market_type') as string) || 'binary'
 
   if (!title || title.length > 200) throw new Error('Title must be 1–200 characters')
   if (!description || description.length > 2000) throw new Error('Description must be 1–2000 characters')
   if (!resolution_criteria || resolution_criteria.length > 2000) throw new Error('Resolution criteria must be 1–2000 characters')
-  if (!ALLOWED_CATEGORIES.includes(category)) throw new Error('Invalid category')
+  if (!category || category.length > 50) throw new Error('Category must be 1–50 characters')
   if (!closes_at || new Date(closes_at) <= new Date()) throw new Error('Closing date must be in the future')
-  if (!Number.isInteger(seedYes) || seedYes < 1 || seedYes > MAX_SEED) throw new Error('Seed YES must be 1–1,000,000')
-  if (!Number.isInteger(seedNo) || seedNo < 1 || seedNo > MAX_SEED) throw new Error('Seed NO must be 1–1,000,000')
+  if (market_type !== 'binary' && market_type !== 'multi') throw new Error('Invalid market type')
 
-  const { error } = await supabase.from('markets').insert({
-    title,
-    description,
-    resolution_criteria,
-    category,
-    closes_at,
-    yes_pool: seedYes,
-    no_pool: seedNo,
-    created_by: user.id,
-  })
+  if (market_type === 'binary') {
+    const seedYes = parseInt(formData.get('seed_yes') as string)
+    const seedNo = parseInt(formData.get('seed_no') as string)
 
-  if (error) throw new Error('Failed to create market')
+    if (!Number.isInteger(seedYes) || seedYes < 1 || seedYes > MAX_SEED) throw new Error('Seed YES must be 1–1,000,000')
+    if (!Number.isInteger(seedNo) || seedNo < 1 || seedNo > MAX_SEED) throw new Error('Seed NO must be 1–1,000,000')
+
+    const { error } = await supabase.from('markets').insert({
+      title,
+      description,
+      resolution_criteria,
+      category,
+      closes_at,
+      market_type: 'binary',
+      yes_pool: seedYes,
+      no_pool: seedNo,
+      created_by: user.id,
+    })
+
+    if (error) throw new Error('Failed to create market')
+  } else {
+    // Parse options: option_label_0, option_seed_0, option_label_1, ...
+    const options: { label: string; seed: number }[] = []
+    let i = 0
+    while (formData.get(`option_label_${i}`) !== null) {
+      const label = (formData.get(`option_label_${i}`) as string).trim()
+      const seed = parseInt(formData.get(`option_seed_${i}`) as string)
+      if (!label || label.length > 100) throw new Error(`Option ${i + 1} label must be 1–100 characters`)
+      if (!Number.isInteger(seed) || seed < 1 || seed > MAX_SEED) throw new Error(`Option ${i + 1} seed must be 1–1,000,000`)
+      options.push({ label, seed })
+      i++
+    }
+
+    if (options.length < 2) throw new Error('Multi-choice markets need at least 2 options')
+    if (options.length > 20) throw new Error('Multi-choice markets can have at most 20 options')
+
+    const { data: market, error: marketError } = await supabase
+      .from('markets')
+      .insert({
+        title,
+        description,
+        resolution_criteria,
+        category,
+        closes_at,
+        market_type: 'multi',
+        yes_pool: 0,
+        no_pool: 0,
+        created_by: user.id,
+      })
+      .select('id')
+      .single()
+
+    if (marketError || !market) throw new Error('Failed to create market')
+
+    const { error: optionsError } = await supabase.from('market_options').insert(
+      options.map((opt, idx) => ({
+        market_id: market.id,
+        label: opt.label,
+        pool: opt.seed,
+        ord: idx,
+      }))
+    )
+
+    if (optionsError) throw new Error('Failed to create market options')
+  }
 
   revalidatePath('/')
   revalidatePath('/admin')
@@ -87,6 +137,23 @@ export async function resolveMarket(marketId: string, outcome: 'yes' | 'no') {
   const { error } = await supabase.rpc('resolve_market', {
     p_market_id: marketId,
     p_outcome: outcome,
+  })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin')
+  revalidatePath(`/market/${marketId}`)
+  revalidatePath('/leaderboard')
+  return { success: true }
+}
+
+export async function resolveMultiMarket(marketId: string, winningOptionId: string) {
+  const supabase = await createClient()
+  await requireAdmin(supabase)
+
+  const { error } = await supabase.rpc('resolve_multi_market', {
+    p_market_id: marketId,
+    p_winning_option_id: winningOptionId,
   })
 
   if (error) return { error: error.message }

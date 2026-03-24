@@ -2,35 +2,49 @@
 
 import { useState, useTransition } from 'react'
 import { executeTrade } from '@/actions/trade'
-import type { Market } from '@/lib/types'
+import type { Market, MarketOption } from '@/lib/types'
 
 interface Props {
   market: Market
+  options?: MarketOption[]
   userBalance: number | null
   isAuthenticated: boolean
 }
 
-export default function TradePanel({ market, userBalance, isAuthenticated }: Props) {
-  const [position, setPosition] = useState<'yes' | 'no'>('yes')
+export default function TradePanel({ market, options, userBalance, isAuthenticated }: Props) {
+  const isMulti = market.market_type === 'multi'
+
+  const [position, setPosition] = useState<string>(
+    isMulti ? (options?.[0]?.id ?? '') : 'yes'
+  )
   const [amount, setAmount] = useState('')
   const [result, setResult] = useState<{ error?: string; success?: boolean } | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const amountNum = parseInt(amount) || 0
-  const total = market.yes_pool + market.no_pool
 
-  function calcPayout(pos: 'yes' | 'no', amt: number) {
+  // Total pool across all options (multi) or yes+no (binary)
+  const totalPool = isMulti
+    ? (options ?? []).reduce((s, o) => s + o.pool, 0)
+    : market.yes_pool + market.no_pool
+
+  function calcPayout(poolForOption: number, amt: number): number {
     if (amt <= 0) return 0
-    const pool = pos === 'yes' ? market.yes_pool : market.no_pool
-    const newTotal = total + amt
-    const newPool = pool + amt
+    const newTotal = totalPool + amt
+    const newPool = poolForOption + amt
     return newTotal > 0 && newPool > 0 ? Math.floor((amt / newPool) * newTotal) : 0
   }
 
-  const estimatedPayout = calcPayout(position, amountNum)
+  // For binary
+  const yesPayout = calcPayout(market.yes_pool, amountNum)
+  const noPayout = calcPayout(market.no_pool, amountNum)
+
+  // For current selection
+  const selectedPool = isMulti
+    ? (options?.find(o => o.id === position)?.pool ?? 0)
+    : position === 'yes' ? market.yes_pool : market.no_pool
+  const estimatedPayout = calcPayout(selectedPool, amountNum)
   const profit = estimatedPayout - amountNum
-  const yesPayout = calcPayout('yes', amountNum)
-  const noPayout = calcPayout('no', amountNum)
 
   const isOpen = market.status === 'open' && new Date(market.closes_at) > new Date()
 
@@ -51,11 +65,15 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
   }
 
   if (!isOpen) {
+    const resolvedLabel = isMulti
+      ? options?.find(o => o.id === market.outcome)?.label ?? market.outcome
+      : market.outcome?.toUpperCase() ?? 'N/A'
+
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
         <p className="text-zinc-400 text-sm text-center py-2">
           {market.status === 'resolved'
-            ? `Market resolved: ${market.outcome?.toUpperCase() ?? 'N/A'}`
+            ? `Market resolved: ${resolvedLabel}`
             : 'This market is closed for trading'}
         </p>
       </div>
@@ -81,37 +99,69 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
     <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
       <h3 className="font-semibold text-zinc-100">Place a trade</h3>
 
-      {/* Position toggle */}
-      <div className="flex rounded-xl overflow-hidden border border-zinc-700">
-        <button
-          type="button"
-          onClick={() => setPosition('yes')}
-          className={`flex-1 py-2 text-sm font-semibold transition ${
-            position === 'yes'
-              ? 'bg-green-500 text-white'
-              : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          YES
-          {amountNum > 0 && (
-            <div className="text-xs font-normal opacity-80">~{yesPayout.toLocaleString()} OC</div>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setPosition('no')}
-          className={`flex-1 py-2 text-sm font-semibold transition ${
-            position === 'no'
-              ? 'bg-red-500 text-white'
-              : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          NO
-          {amountNum > 0 && (
-            <div className="text-xs font-normal opacity-80">~{noPayout.toLocaleString()} OC</div>
-          )}
-        </button>
-      </div>
+      {isMulti ? (
+        <div className="space-y-2">
+          {(options ?? []).map((opt) => {
+            const optTotal = totalPool
+            const optPct = optTotal === 0 ? 0 : Math.round((opt.pool / optTotal) * 100)
+            const payout = calcPayout(opt.pool, amountNum)
+            const isSelected = position === opt.id
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setPosition(opt.id)}
+                className={`w-full text-left rounded-xl border px-4 py-2.5 transition ${
+                  isSelected
+                    ? 'border-accent bg-accent/10 text-zinc-100'
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{opt.label}</span>
+                  <div className="text-right">
+                    <span className="text-xs text-zinc-500">{optPct}%</span>
+                    {amountNum > 0 && (
+                      <div className="text-xs text-zinc-400">~{payout.toLocaleString()} OC</div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="flex rounded-xl overflow-hidden border border-zinc-700">
+          <button
+            type="button"
+            onClick={() => setPosition('yes')}
+            className={`flex-1 py-2 text-sm font-semibold transition ${
+              position === 'yes'
+                ? 'bg-green-500 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            YES
+            {amountNum > 0 && (
+              <div className="text-xs font-normal opacity-80">~{yesPayout.toLocaleString()} OC</div>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPosition('no')}
+            className={`flex-1 py-2 text-sm font-semibold transition ${
+              position === 'no'
+                ? 'bg-red-500 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            NO
+            {amountNum > 0 && (
+              <div className="text-xs font-normal opacity-80">~{noPayout.toLocaleString()} OC</div>
+            )}
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="space-y-1">
@@ -141,7 +191,6 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
           )}
         </div>
 
-        {/* Preview */}
         <div className="rounded-xl bg-zinc-800 p-3 space-y-1.5 text-xs">
           {amountNum > 0 ? (
             <>
@@ -150,7 +199,10 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
                 <span className="text-zinc-200">{amountNum.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-zinc-400">
-                <span>Payout if {position.toUpperCase()} wins</span>
+                <span>Payout if {isMulti
+                  ? (options?.find(o => o.id === position)?.label ?? 'selected')
+                  : position.toUpperCase()} wins
+                </span>
                 <span className="text-zinc-200">{estimatedPayout.toLocaleString()} OC</span>
               </div>
               <div className="flex justify-between">
@@ -175,11 +227,15 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
         <button
           type="submit"
           disabled={isPending || !amountNum || amountNum < 1 || (userBalance !== null && amountNum > userBalance)}
-          className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition disabled:opacity-40 ${
-            position === 'yes' ? 'bg-green-500 hover:bg-green-400' : 'bg-red-500 hover:bg-red-400'
-          }`}
+          className="w-full rounded-xl py-3 text-sm font-semibold text-white transition disabled:opacity-40"
+          style={{ background: 'var(--color-accent)' }}
         >
-          {isPending ? 'Placing…' : `Buy ${position.toUpperCase()} for ${amountNum || 0} OC`}
+          {isPending
+            ? 'Placing…'
+            : `Buy ${isMulti
+                ? (options?.find(o => o.id === position)?.label ?? 'option')
+                : position.toUpperCase()
+              } for ${amountNum || 0} OC`}
         </button>
       </form>
     </div>

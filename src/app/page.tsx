@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
 import MarketCard from '@/components/MarketCard'
-import type { Market } from '@/lib/types'
+import type { Market, MarketOption } from '@/lib/types'
 
 export const revalidate = 60
+
+const STANDARD_CATEGORIES = ['Acads', 'Insti Life', 'Sports']
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -21,17 +23,39 @@ export default async function HomePage() {
 
   const openMarkets = (markets ?? []) as Market[]
 
-  // Batch fetch trades for all open markets to build sparklines
+  // Split into standard markets and special category collections (e.g. IPL)
+  const standardMarkets = openMarkets.filter(m => STANDARD_CATEGORIES.includes(m.category))
+  const specialCategories = [...new Set(
+    openMarkets.filter(m => !STANDARD_CATEGORIES.includes(m.category)).map(m => m.category)
+  )]
+
+  // Fetch options for multi markets
+  const multiIds = openMarkets.filter(m => m.market_type === 'multi').map(m => m.id)
+  const optionsByMarket: Record<string, MarketOption[]> = {}
+  if (multiIds.length > 0) {
+    const { data: allOptions } = await supabase
+      .from('market_options')
+      .select('*')
+      .in('market_id', multiIds)
+      .order('ord', { ascending: true })
+    for (const opt of allOptions ?? []) {
+      if (!optionsByMarket[opt.market_id]) optionsByMarket[opt.market_id] = []
+      optionsByMarket[opt.market_id].push(opt as MarketOption)
+    }
+  }
+
+  // Batch fetch trades for standard binary markets to build sparklines
   const sparklines: Record<string, number[]> = {}
-  if (openMarkets.length > 0) {
-    const ids = openMarkets.map(m => m.id)
+  const binaryStandardMarkets = standardMarkets.filter(m => m.market_type !== 'multi')
+  if (binaryStandardMarkets.length > 0) {
+    const ids = binaryStandardMarkets.map(m => m.id)
     const { data: allTrades } = await supabase
       .from('trades')
       .select('market_id, position, amount_oc')
       .in('market_id', ids)
       .order('created_at', { ascending: true })
     if (allTrades) {
-      for (const m of openMarkets) {
+      for (const m of standardMarkets) {
         const mTrades = allTrades.filter(t => t.market_id === m.id)
         if (mTrades.length === 0) continue
         const yesSum = mTrades.filter(t => t.position === 'yes').reduce((s, t) => s + t.amount_oc, 0)
@@ -79,8 +103,8 @@ export default async function HomePage() {
                   </div>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {openMarkets.map((market) => (
-                      <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} />
+                    {standardMarkets.map((market) => (
+                      <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} options={optionsByMarket[market.id]} />
                     ))}
                   </div>
                 )}
@@ -116,8 +140,27 @@ export default async function HomePage() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {openMarkets.map((market) => (
-                  <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} />
+                {specialCategories.map((cat) => {
+                  const count = openMarkets.filter(m => m.category === cat).length
+                  return (
+                    <Link
+                      key={cat}
+                      href={`/category/${encodeURIComponent(cat)}`}
+                      className="block rounded-2xl border border-accent/30 bg-accent/5 p-5 hover:border-accent/60 hover:bg-accent/10 transition group"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-xs text-accent/70 font-medium uppercase tracking-widest">Special Event</p>
+                          <p className="text-xl font-bold text-zinc-100 group-hover:text-white transition">{cat}</p>
+                          <p className="text-sm text-zinc-400">{count} active market{count !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="text-accent/50 group-hover:text-accent transition text-2xl">→</div>
+                      </div>
+                    </Link>
+                  )
+                })}
+                {standardMarkets.map((market) => (
+                  <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} options={optionsByMarket[market.id]} />
                 ))}
               </div>
             )}
@@ -140,12 +183,27 @@ async function ClosedMarkets() {
 
   if (!data?.length) return null
 
+  const closedMarkets = data as Market[]
+  const multiIds = closedMarkets.filter(m => m.market_type === 'multi').map(m => m.id)
+  const optionsByMarket: Record<string, MarketOption[]> = {}
+  if (multiIds.length > 0) {
+    const { data: allOptions } = await supabase
+      .from('market_options')
+      .select('*')
+      .in('market_id', multiIds)
+      .order('ord', { ascending: true })
+    for (const opt of allOptions ?? []) {
+      if (!optionsByMarket[opt.market_id]) optionsByMarket[opt.market_id] = []
+      optionsByMarket[opt.market_id].push(opt as MarketOption)
+    }
+  }
+
   return (
     <div className="mt-12 space-y-4">
       <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wide">Past markets</h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(data as Market[]).map((market) => (
-          <MarketCard key={market.id} market={market} />
+        {closedMarkets.map((market) => (
+          <MarketCard key={market.id} market={market} options={optionsByMarket[market.id]} />
         ))}
       </div>
     </div>

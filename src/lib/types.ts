@@ -1,14 +1,9 @@
 export type MarketStatus = 'open' | 'closed' | 'resolved'
-export type Position = 'yes' | 'no'
-export type MarketOutcome = 'yes' | 'no' | null
+export type MarketType = 'binary' | 'multi'
+export type Position = string  // 'yes' | 'no' for binary; option UUID for multi
+export type MarketOutcome = string | null  // 'yes' | 'no' for binary; option UUID for multi
 
-export type Category =
-  | 'Academics'
-  | 'Placements'
-  | 'Campus Life'
-  | 'Sports'
-  | 'Events'
-  | 'Other'
+export type Category = string
 
 export interface User {
   id: string
@@ -20,12 +15,21 @@ export interface User {
   created_at: string
 }
 
+export interface MarketOption {
+  id: string
+  market_id: string
+  label: string
+  pool: number
+  ord: number
+}
+
 export interface Market {
   id: string
   title: string
   description: string | null
   resolution_criteria: string | null
   category: Category
+  market_type: MarketType
   yes_pool: number
   no_pool: number
   status: MarketStatus

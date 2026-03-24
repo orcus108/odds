@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import ProbabilityBar from './ProbabilityBar'
 import SparklineChart from './SparklineChart'
-import type { Market } from '@/lib/types'
+import type { Market, MarketOption } from '@/lib/types'
 
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
   open: { label: 'Open', color: 'text-green-400 bg-green-500/10 border-green-500/20' },
@@ -21,13 +21,20 @@ function timeLeft(closesAt: string) {
 interface Props {
   market: Market
   sparkline?: number[]
+  options?: MarketOption[]
 }
 
-export default function MarketCard({ market, sparkline }: Props) {
-  const total = market.yes_pool + market.no_pool
-  const yesPct =
-    total === 0 ? 50 : Math.round((market.yes_pool / total) * 100)
+export default function MarketCard({ market, sparkline, options }: Props) {
+  const isMulti = market.market_type === 'multi'
   const badge = STATUS_BADGE[market.status]
+
+  // Binary stats
+  const binaryTotal = market.yes_pool + market.no_pool
+  const yesPct = binaryTotal === 0 ? 50 : Math.round((market.yes_pool / binaryTotal) * 100)
+
+  // Multi stats
+  const multiTotal = isMulti && options ? options.reduce((s, o) => s + o.pool, 0) : 0
+  const total = isMulti ? multiTotal : binaryTotal
 
   return (
     <Link
@@ -40,9 +47,7 @@ export default function MarketCard({ market, sparkline }: Props) {
             <span className="text-xs text-zinc-500 border border-zinc-700 rounded-full px-2 py-0.5">
               {market.category}
             </span>
-            <span
-              className={`text-xs border rounded-full px-2 py-0.5 ${badge.color}`}
-            >
+            <span className={`text-xs border rounded-full px-2 py-0.5 ${badge.color}`}>
               {badge.label}
             </span>
           </div>
@@ -51,16 +56,46 @@ export default function MarketCard({ market, sparkline }: Props) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-2xl font-bold text-green-400">{yesPct}%</div>
-          <div className="text-xs text-zinc-500">chance YES</div>
+          {isMulti ? (
+            <div className="text-sm font-semibold text-zinc-400">{options?.length ?? 0} options</div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-green-400">{yesPct}%</div>
+              <div className="text-xs text-zinc-500">chance YES</div>
+            </>
+          )}
         </div>
       </div>
 
-      <ProbabilityBar yesPool={market.yes_pool} noPool={market.no_pool} />
-
-      {sparkline && sparkline.length >= 2 && (
-        <SparklineChart data={sparkline} height={32} />
-      )}
+      {isMulti && options && options.length > 0 ? (
+        <div className="space-y-1.5">
+          {options.slice(0, 3).map((opt) => {
+            const pct = multiTotal === 0 ? Math.round(100 / options.length) : Math.round((opt.pool / multiTotal) * 100)
+            return (
+              <div key={opt.id} className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-zinc-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="text-xs text-zinc-400 w-16 text-right truncate">{opt.label}</span>
+                <span className="text-xs text-zinc-500 w-8 text-right">{pct}%</span>
+              </div>
+            )
+          })}
+          {options.length > 3 && (
+            <p className="text-xs text-zinc-600">+{options.length - 3} more</p>
+          )}
+        </div>
+      ) : !isMulti ? (
+        <>
+          <ProbabilityBar yesPool={market.yes_pool} noPool={market.no_pool} />
+          {sparkline && sparkline.length >= 2 && (
+            <SparklineChart data={sparkline} height={32} />
+          )}
+        </>
+      ) : null}
 
       <div className="flex items-center justify-between text-xs text-zinc-500">
         <span>
