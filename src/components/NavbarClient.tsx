@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
@@ -12,6 +13,7 @@ interface Props {
 
 export default function NavbarClient({ user, userData }: Props) {
   const router = useRouter()
+  const [open, setOpen] = useState(false)
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -32,16 +34,47 @@ export default function NavbarClient({ user, userData }: Props) {
       </div>
       <Link
         href="/profile"
-        className="text-sm text-zinc-300 hover:text-zinc-100 transition font-medium"
+        className="hidden sm:block text-sm text-zinc-300 hover:text-zinc-100 transition font-medium"
       >
         {userData?.username ?? user.email?.split('@')[0]}
       </Link>
       <button
         onClick={handleSignOut}
-        className="text-xs text-zinc-500 hover:text-zinc-300 transition"
+        className="hidden sm:block text-xs text-zinc-500 hover:text-zinc-300 transition"
       >
         Sign out
       </button>
+
+      {/* Mobile hamburger */}
+      <div className="relative sm:hidden">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex flex-col gap-1.5 p-2 text-zinc-400 hover:text-zinc-100"
+          aria-label="Menu"
+        >
+          <span className="block w-5 h-px bg-current" />
+          <span className="block w-5 h-px bg-current" />
+          <span className="block w-5 h-px bg-current" />
+        </button>
+
+        {open && (
+          <div className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl py-1 z-50">
+            <div className="px-3 py-2 border-b border-zinc-800">
+              <p className="text-sm font-medium text-zinc-200">{userData?.username ?? user.email?.split('@')[0]}</p>
+              <p className="text-xs text-zinc-500">{userData?.balance_oc?.toLocaleString() ?? '…'} OC</p>
+            </div>
+            <Link href="/" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800">Markets</Link>
+            <Link href="/leaderboard" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800">Leaderboard</Link>
+            <Link href="/profile" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800">Profile</Link>
+            {userData?.is_admin && (
+              <Link href="/admin" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800">Admin</Link>
+            )}
+            <div className="border-t border-zinc-800 mt-1">
+              <button onClick={handleSignOut} className="block w-full text-left px-3 py-2 text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800">Sign out</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
