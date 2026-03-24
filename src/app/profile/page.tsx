@@ -10,11 +10,17 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: userData }, { data: trades }, { data: payouts }] = await Promise.all([
+  type TradeRow = { id: string; position: string; amount_oc: number; created_at: string; markets: { id: string; title: string; status: string; outcome: string | null } | null }
+  type PayoutRow = { id: string; amount_oc: number; created_at: string; markets: { title: string } | null }
+
+  const [{ data: userData }, { data: rawTrades }, { data: rawPayouts }] = await Promise.all([
     supabase.from('users').select('username, balance_oc, created_at').eq('id', user.id).single(),
     supabase.from('trades').select('id, position, amount_oc, created_at, markets(id, title, status, outcome)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
     supabase.from('payouts').select('id, amount_oc, created_at, markets(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
   ])
+
+  const trades = rawTrades as unknown as TradeRow[] | null
+  const payouts = rawPayouts as unknown as PayoutRow[] | null
 
   if (!userData) redirect('/login')
 
