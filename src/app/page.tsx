@@ -1,65 +1,153 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import Navbar from '@/components/Navbar'
+import MarketCard from '@/components/MarketCard'
+import type { Market } from '@/lib/types'
 
-export default function Home() {
+export const revalidate = 60
+
+export default async function HomePage() {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data: markets } = await supabase
+    .from('markets')
+    .select('*')
+    .eq('status', 'open')
+    .order('created_at', { ascending: false })
+
+  const openMarkets = (markets ?? []) as Market[]
+
+  // Batch fetch trades for all open markets to build sparklines
+  const sparklines: Record<string, number[]> = {}
+  if (openMarkets.length > 0) {
+    const ids = openMarkets.map(m => m.id)
+    const { data: allTrades } = await supabase
+      .from('trades')
+      .select('market_id, position, amount_oc')
+      .in('market_id', ids)
+      .order('created_at', { ascending: true })
+    if (allTrades) {
+      for (const m of openMarkets) {
+        const mTrades = allTrades.filter(t => t.market_id === m.id)
+        if (mTrades.length === 0) continue
+        const yesSum = mTrades.filter(t => t.position === 'yes').reduce((s, t) => s + t.amount_oc, 0)
+        const noSum = mTrades.filter(t => t.position === 'no').reduce((s, t) => s + t.amount_oc, 0)
+        let yp = m.yes_pool - yesSum
+        let np = m.no_pool - noSum
+        const pts: number[] = []
+        const snap = () => { const t = yp + np; pts.push(t > 0 ? Math.round(yp / t * 100) : 50) }
+        snap()
+        for (const trade of mTrades) {
+          if (trade.position === 'yes') yp += trade.amount_oc
+          else np += trade.amount_oc
+          snap()
+        }
+        sparklines[m.id] = pts
+      }
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="min-h-screen">
+      <Navbar />
+
+      <main
+        className="max-w-6xl mx-auto px-4 flex flex-col"
+        style={{ minHeight: 'calc(100vh - 3.5rem)' }}
+      >
+        {!user ? (
+          <>
+            <div className="text-center space-y-4 pt-6 pb-8 sm:py-12">
+              <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-zinc-100">
+                You called it.
+              </h1>
+              <p className="text-lg text-zinc-400 max-w-xl mx-auto">
+                Your hot takes, now with consequences.
+              </p>
+            </div>
+
+            <div className="relative flex-1">
+              <div className="blur-sm pointer-events-none select-none">
+                {openMarkets.length === 0 ? (
+                  <div className="text-center py-16 rounded-2xl border border-zinc-800 bg-zinc-900/50">
+                    <p className="text-zinc-400">No open markets yet.</p>
+                    <p className="text-sm text-zinc-500 mt-1">Check back soon.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {openMarkets.map((market) => (
+                      <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} />
+                    ))}
+                  </div>
+                )}
+                <ClosedMarkets />
+              </div>
+
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center space-y-3 bg-zinc-950/80 backdrop-blur-sm border border-zinc-800 rounded-2xl px-8 py-6">
+                  <p className="text-zinc-100 font-semibold">Sign in to access markets</p>
+                  <p className="text-sm text-zinc-400">You need an @smail.iitm.ac.in account to trade.</p>
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:brightness-110"
+                    style={{ background: '#f59e0b' }}
+                  >
+                    Sign in →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="py-10">
+            <div className="space-y-1 mb-8">
+              <h2 className="text-xl font-bold text-zinc-100">Active Markets</h2>
+              <p className="text-sm text-zinc-500">Click any market to trade</p>
+            </div>
+
+            {openMarkets.length === 0 ? (
+              <div className="text-center py-16 rounded-2xl border border-zinc-800 bg-zinc-900/50">
+                <p className="text-zinc-400">No open markets yet.</p>
+                <p className="text-sm text-zinc-500 mt-1">Check back soon.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {openMarkets.map((market) => (
+                  <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} />
+                ))}
+              </div>
+            )}
+            <ClosedMarkets />
+          </div>
+        )}
       </main>
     </div>
-  );
+  )
+}
+
+async function ClosedMarkets() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('markets')
+    .select('*')
+    .in('status', ['closed', 'resolved'])
+    .order('created_at', { ascending: false })
+    .limit(6)
+
+  if (!data?.length) return null
+
+  return (
+    <div className="mt-12 space-y-4">
+      <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wide">Past markets</h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {(data as Market[]).map((market) => (
+          <MarketCard key={market.id} market={market} />
+        ))}
+      </div>
+    </div>
+  )
 }
