@@ -73,14 +73,18 @@ export default function MarketCard({ market, sparkline, options }: Props) {
             const pct = multiTotal === 0 ? Math.round(100 / options.length) : Math.round((opt.pool / multiTotal) * 100)
             return (
               <div key={opt.id} className="flex items-center gap-2">
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: opt.color }}
+                />
                 <div className="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-zinc-500"
-                    style={{ width: `${pct}%` }}
+                    className="h-full rounded-full"
+                    style={{ width: `${pct}%`, backgroundColor: opt.color, opacity: 0.8 }}
                   />
                 </div>
                 <span className="text-xs text-zinc-400 w-16 text-right truncate">{opt.label}</span>
-                <span className="text-xs text-zinc-500 w-8 text-right">{pct}%</span>
+                <span className="text-xs w-8 text-right" style={{ color: opt.color }}>{pct}%</span>
               </div>
             )
           })}

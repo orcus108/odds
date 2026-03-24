@@ -172,19 +172,29 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
                       return (
                         <div key={opt.id} className="space-y-1">
                           <div className="flex items-center justify-between text-sm">
-                            <span className={`font-medium ${isWinner ? 'text-accent' : 'text-zinc-200'}`}>
-                              {opt.label}
-                              {isWinner && <span className="ml-1.5 text-xs text-accent">✓ winner</span>}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: opt.color }}
+                              />
+                              <span className="font-medium text-zinc-200">
+                                {opt.label}
+                                {isWinner && (
+                                  <span className="ml-1.5 text-xs font-semibold" style={{ color: opt.color }}>
+                                    ✓ winner
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-3 text-xs text-zinc-400">
                               <span>{opt.pool.toLocaleString()} OC</span>
-                              <span className="font-semibold text-zinc-200">{pct}%</span>
+                              <span className="font-semibold" style={{ color: opt.color }}>{pct}%</span>
                             </div>
                           </div>
                           <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all ${isWinner ? 'bg-accent' : 'bg-zinc-600'}`}
-                              style={{ width: `${pct}%` }}
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${pct}%`, backgroundColor: opt.color, opacity: isWinner ? 1 : 0.7 }}
                             />
                           </div>
                         </div>
@@ -259,16 +269,26 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
               ) : (
                 <div className="space-y-2">
                   {activity.map((trade) => {
+                    const matchedOption = isMulti ? options.find(o => o.id === trade.position) : null
                     const positionLabel = isMulti
-                      ? (options.find(o => o.id === trade.position)?.label ?? trade.position.slice(0, 8))
+                      ? (matchedOption?.label ?? trade.position.slice(0, 8))
                       : trade.position.toUpperCase()
+                    const badgeColor = isMulti
+                      ? matchedOption?.color ?? '#6366f1'
+                      : trade.position === 'yes' ? '#22c55e' : '#ef4444'
                     return (
                       <div
                         key={trade.id}
                         className="flex items-center justify-between text-sm py-2 border-b border-zinc-800"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold rounded px-1.5 py-0.5 text-accent bg-accent/10">
+                          <span
+                            className="text-xs font-bold rounded px-1.5 py-0.5"
+                            style={{
+                              color: badgeColor,
+                              backgroundColor: `${badgeColor}18`,
+                            }}
+                          >
                             {positionLabel}
                           </span>
                           <span className="text-zinc-300">

@@ -102,8 +102,7 @@ export default function TradePanel({ market, options, userBalance, isAuthenticat
       {isMulti ? (
         <div className="space-y-2">
           {(options ?? []).map((opt) => {
-            const optTotal = totalPool
-            const optPct = optTotal === 0 ? 0 : Math.round((opt.pool / optTotal) * 100)
+            const optPct = totalPool === 0 ? 0 : Math.round((opt.pool / totalPool) * 100)
             const payout = calcPayout(opt.pool, amountNum)
             const isSelected = position === opt.id
             return (
@@ -111,16 +110,25 @@ export default function TradePanel({ market, options, userBalance, isAuthenticat
                 key={opt.id}
                 type="button"
                 onClick={() => setPosition(opt.id)}
-                className={`w-full text-left rounded-xl border px-4 py-2.5 transition ${
-                  isSelected
-                    ? 'border-accent bg-accent/10 text-zinc-100'
-                    : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600'
-                }`}
+                className="w-full text-left rounded-xl border px-4 py-2.5 transition"
+                style={isSelected ? {
+                  borderColor: opt.color,
+                  backgroundColor: `${opt.color}18`,
+                  color: '#f4f4f5',
+                } : {
+                  borderColor: '#3f3f46',
+                  backgroundColor: '#27272a',
+                  color: '#a1a1aa',
+                }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{opt.label}</span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: opt.color }}
+                  />
+                  <span className="text-sm font-medium flex-1">{opt.label}</span>
                   <div className="text-right">
-                    <span className="text-xs text-zinc-500">{optPct}%</span>
+                    <span className="text-xs" style={{ color: isSelected ? opt.color : '#71717a' }}>{optPct}%</span>
                     {amountNum > 0 && (
                       <div className="text-xs text-zinc-400">~{payout.toLocaleString()} OC</div>
                     )}

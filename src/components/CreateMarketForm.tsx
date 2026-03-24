@@ -6,21 +6,39 @@ import { createMarket } from '@/actions/market'
 
 const STANDARD_CATEGORIES = ['Acads', 'Insti Life', 'Sports']
 
+const PALETTE = [
+  '#6366f1', // indigo
+  '#3b82f6', // blue
+  '#06b6d4', // cyan
+  '#22c55e', // green
+  '#84cc16', // lime
+  '#eab308', // yellow
+  '#f97316', // orange
+  '#ef4444', // red
+  '#ec4899', // pink
+  '#a855f7', // purple
+]
+
 interface OptionRow {
   label: string
   seed: string
+  color: string
+}
+
+function nextColor(index: number) {
+  return PALETTE[index % PALETTE.length]
 }
 
 export default function CreateMarketForm() {
   const [marketType, setMarketType] = useState<'binary' | 'multi'>('binary')
   const [options, setOptions] = useState<OptionRow[]>([
-    { label: '', seed: '500' },
-    { label: '', seed: '500' },
+    { label: '', seed: '500', color: PALETTE[0] },
+    { label: '', seed: '500', color: PALETTE[1] },
   ])
 
   function addOption() {
     if (options.length >= 20) return
-    setOptions([...options, { label: '', seed: '500' }])
+    setOptions([...options, { label: '', seed: '500', color: nextColor(options.length) }])
   }
 
   function removeOption(idx: number) {
@@ -155,39 +173,74 @@ export default function CreateMarketForm() {
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-zinc-500">
-              Each option gets a seed pool to set its opening probability. This is free — no OC is deducted.
+              Each option gets a seed pool and a color. This is free — no OC is deducted.
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {options.map((opt, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
-                  <span className="text-xs text-zinc-500 w-5 shrink-0">{idx + 1}.</span>
-                  <input
-                    type="text"
-                    name={`option_label_${idx}`}
-                    value={opt.label}
-                    onChange={(e) => updateOption(idx, 'label', e.target.value)}
-                    placeholder={`Option ${idx + 1} label`}
-                    maxLength={100}
-                    className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition"
-                  />
-                  <input
-                    type="number"
-                    name={`option_seed_${idx}`}
-                    value={opt.seed}
-                    onChange={(e) => updateOption(idx, 'seed', e.target.value)}
-                    min={1}
-                    placeholder="Seed"
-                    className="w-24 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-accent/60 transition"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeOption(idx)}
-                    disabled={options.length <= 2}
-                    className="text-zinc-600 hover:text-red-400 transition disabled:opacity-20 text-lg leading-none"
-                    title="Remove option"
-                  >
-                    ×
-                  </button>
+                <div key={idx} className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    {/* Color swatch — clicking opens a hidden color input */}
+                    <label className="relative cursor-pointer shrink-0" title="Pick color">
+                      <span
+                        className="block w-7 h-7 rounded-lg border-2 border-zinc-600 transition hover:scale-110"
+                        style={{ backgroundColor: opt.color }}
+                      />
+                      <input
+                        type="color"
+                        value={opt.color}
+                        onChange={(e) => updateOption(idx, 'color', e.target.value)}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                      />
+                    </label>
+                    {/* Hidden form field for color */}
+                    <input type="hidden" name={`option_color_${idx}`} value={opt.color} />
+
+                    <span className="text-xs text-zinc-500 w-4 shrink-0">{idx + 1}.</span>
+                    <input
+                      type="text"
+                      name={`option_label_${idx}`}
+                      value={opt.label}
+                      onChange={(e) => updateOption(idx, 'label', e.target.value)}
+                      placeholder={`Option ${idx + 1} label`}
+                      maxLength={100}
+                      className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition"
+                    />
+                    <input
+                      type="number"
+                      name={`option_seed_${idx}`}
+                      value={opt.seed}
+                      onChange={(e) => updateOption(idx, 'seed', e.target.value)}
+                      min={1}
+                      placeholder="Seed"
+                      className="w-24 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-accent/60 transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeOption(idx)}
+                      disabled={options.length <= 2}
+                      className="text-zinc-600 hover:text-red-400 transition disabled:opacity-20 text-lg leading-none"
+                      title="Remove option"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {/* Preset color swatches */}
+                  <div className="flex gap-1.5 pl-9">
+                    {PALETTE.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => updateOption(idx, 'color', color)}
+                        className="w-4 h-4 rounded-full transition hover:scale-125"
+                        style={{
+                          backgroundColor: color,
+                          outline: opt.color === color ? `2px solid ${color}` : 'none',
+                          outlineOffset: '2px',
+                        }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

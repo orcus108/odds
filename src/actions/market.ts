@@ -58,14 +58,16 @@ export async function createMarket(formData: FormData) {
     if (error) throw new Error('Failed to create market')
   } else {
     // Parse options: option_label_0, option_seed_0, option_label_1, ...
-    const options: { label: string; seed: number }[] = []
+    const options: { label: string; seed: number; color: string }[] = []
     let i = 0
     while (formData.get(`option_label_${i}`) !== null) {
       const label = (formData.get(`option_label_${i}`) as string).trim()
       const seed = parseInt(formData.get(`option_seed_${i}`) as string)
+      const color = (formData.get(`option_color_${i}`) as string)?.trim() || '#6366f1'
       if (!label || label.length > 100) throw new Error(`Option ${i + 1} label must be 1–100 characters`)
       if (!Number.isInteger(seed) || seed < 1 || seed > MAX_SEED) throw new Error(`Option ${i + 1} seed must be 1–1,000,000`)
-      options.push({ label, seed })
+      if (!/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error(`Option ${i + 1} has an invalid color`)
+      options.push({ label, seed, color })
       i++
     }
 
@@ -95,6 +97,7 @@ export async function createMarket(formData: FormData) {
         market_id: market.id,
         label: opt.label,
         pool: opt.seed,
+        color: opt.color,
         ord: idx,
       }))
     )

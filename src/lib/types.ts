@@ -21,6 +21,7 @@ export interface MarketOption {
   label: string
   pool: number
   ord: number
+  color: string
 }
 
 export interface Market {
