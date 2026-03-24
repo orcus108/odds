@@ -65,7 +65,7 @@ export default async function ProfilePage() {
             <p className="text-sm text-zinc-500 mt-0.5">Joined {formatDate(userData.created_at)}</p>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-black text-amber-400">{userData.balance_oc.toLocaleString()}</div>
+            <div className="text-3xl font-black text-accent">{userData.balance_oc.toLocaleString()}</div>
             <div className="text-sm text-zinc-500">Oddcoins</div>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default async function ProfilePage() {
 
           {trades?.length === 0 ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-center text-zinc-500 text-sm">
-              No trades yet. <Link href="/" className="text-amber-400 hover:underline">Browse markets →</Link>
+              No trades yet. <Link href="/" className="text-accent hover:underline">Browse markets →</Link>
             </div>
           ) : (
             <div className="rounded-2xl border border-zinc-800 overflow-hidden">
@@ -119,7 +119,7 @@ export default async function ProfilePage() {
                         <td className="px-4 py-3 max-w-[180px]">
                           <Link
                             href={`/market/${trade.market_id}`}
-                            className="text-zinc-300 hover:text-amber-400 transition truncate block"
+                            className="text-zinc-300 hover:text-accent transition truncate block"
                           >
                             {trade.markets?.title ?? 'Unknown'}
                           </Link>
@@ -135,7 +135,7 @@ export default async function ProfilePage() {
                             {trade.position.toUpperCase()}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right text-amber-400 font-medium">
+                        <td className="px-4 py-3 text-right text-accent font-medium">
                           {trade.amount_oc.toLocaleString()} OC
                         </td>
                         <td className="px-3 py-3 text-center hidden sm:table-cell">

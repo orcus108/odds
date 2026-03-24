@@ -10,7 +10,7 @@ create table public.users (
   email text not null unique,
   username text unique,
   avatar_url text,
-  balance_oc integer not null default 1000,
+  balance_oc integer not null default 10000,
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );

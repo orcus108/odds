@@ -68,8 +68,8 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
         <p className="text-zinc-400 text-sm">Sign in to trade on this market</p>
         <a
           href="/login"
-          className="inline-block rounded-xl px-6 py-2.5 text-sm font-semibold text-zinc-900"
-          style={{ background: '#f59e0b' }}
+          className="inline-block rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
+          style={{ background: 'var(--color-accent)' }}
         >
           Sign in
         </a>
@@ -124,19 +124,19 @@ export default function TradePanel({ market, userBalance, isAuthenticated }: Pro
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="50"
-              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-amber-500/60 transition"
+              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition"
             />
             <button
               type="button"
               onClick={() => setAmount(String(userBalance ?? 0))}
-              className="text-xs text-zinc-500 hover:text-amber-400 transition px-2"
+              className="text-xs text-zinc-500 hover:text-accent transition px-2"
             >
               Max
             </button>
           </div>
           {userBalance !== null && (
             <p className="text-xs text-zinc-500">
-              Balance: <span className="text-amber-400">{userBalance.toLocaleString()} OC</span>
+              Balance: <span className="text-accent">{userBalance.toLocaleString()} OC</span>
             </p>
           )}
         </div>

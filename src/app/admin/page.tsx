@@ -34,8 +34,8 @@ export default async function AdminPage() {
           </div>
           <Link
             href="/admin/create"
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:brightness-110"
-            style={{ background: '#f59e0b' }}
+            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+            style={{ background: 'var(--color-accent)' }}
           >
             + New market
           </Link>
@@ -60,7 +60,7 @@ export default async function AdminPage() {
                           ? 'text-green-400 bg-green-500/10 border-green-500/20'
                           : market.status === 'closed'
                           ? 'text-zinc-400 bg-zinc-800 border-zinc-700'
-                          : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                          : 'text-accent bg-accent/10 border-accent/20'
                       }`}>
                         {market.status}
                         {market.outcome ? ` · ${market.outcome.toUpperCase()}` : ''}
@@ -69,13 +69,13 @@ export default async function AdminPage() {
                     </div>
                     <Link
                       href={`/market/${market.id}`}
-                      className="font-medium text-zinc-100 hover:text-amber-400 transition"
+                      className="font-medium text-zinc-100 hover:text-accent transition"
                     >
                       {market.title}
                     </Link>
                   </div>
                   <div className="text-right shrink-0 text-sm">
-                    <div className="text-amber-400 font-semibold">
+                    <div className="text-accent font-semibold">
                       {(market.yes_pool + market.no_pool).toLocaleString()} OC
                     </div>
                     <div className="text-zinc-500 text-xs">Closes {formatDate(market.closes_at)}</div>

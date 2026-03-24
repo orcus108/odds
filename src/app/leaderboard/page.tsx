@@ -62,7 +62,7 @@ export default async function LeaderboardPage() {
                       <tr
                         key={u.id}
                         className={`border-b border-zinc-800/50 last:border-0 ${
-                          isMe ? 'bg-amber-500/5' : 'hover:bg-zinc-900/50'
+                          isMe ? 'bg-accent/5' : 'hover:bg-zinc-900/50'
                         } transition`}
                       >
                         <td className="px-4 py-3.5">
@@ -75,15 +75,15 @@ export default async function LeaderboardPage() {
                           )}
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className={`font-medium ${isMe ? 'text-amber-400' : 'text-zinc-200'}`}>
+                          <span className={`font-medium ${isMe ? 'text-accent' : 'text-zinc-200'}`}>
                             {u.username}
                           </span>
                           {isMe && (
-                            <span className="ml-2 text-xs text-amber-500/70">(you)</span>
+                            <span className="ml-2 text-xs text-accent/70">(you)</span>
                           )}
                         </td>
                         <td className="px-4 py-3.5 text-right">
-                          <span className="text-amber-400 font-semibold">
+                          <span className="text-accent font-semibold">
                             {u.balance_oc.toLocaleString()}
                           </span>
                           <span className="text-zinc-500 ml-1">OC</span>
@@ -113,8 +113,8 @@ export default async function LeaderboardPage() {
                 <p className="text-sm text-zinc-400">You need an @smail.iitm.ac.in account.</p>
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:brightness-110"
-                  style={{ background: '#f59e0b' }}
+                  className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+                  style={{ background: 'var(--color-accent)' }}
                 >
                   Sign in →
                 </Link>

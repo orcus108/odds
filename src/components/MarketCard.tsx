@@ -6,7 +6,7 @@ import type { Market } from '@/lib/types'
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
   open: { label: 'Open', color: 'text-green-400 bg-green-500/10 border-green-500/20' },
   closed: { label: 'Closed', color: 'text-zinc-400 bg-zinc-800 border-zinc-700' },
-  resolved: { label: 'Resolved', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+  resolved: { label: 'Resolved', color: 'text-accent bg-accent/10 border-accent/20' },
 }
 
 function timeLeft(closesAt: string) {

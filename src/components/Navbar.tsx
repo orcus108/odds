@@ -23,7 +23,7 @@ export default async function Navbar() {
     <nav className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="text-xl font-black tracking-tight" style={{ color: '#f59e0b' }}>
+          <Link href="/" className="text-xl font-bold tracking-tight" style={{ color: 'var(--color-accent)' }}>
             Odds
           </Link>
           <div className="hidden sm:flex items-center gap-4 text-sm text-zinc-400">

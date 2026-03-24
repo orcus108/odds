@@ -66,7 +66,7 @@ export default async function HomePage() {
                 You called it.
               </h1>
               <p className="text-lg text-zinc-400 max-w-xl mx-auto">
-                Your hot takes, now with consequences.
+                Make your predictions count.
               </p>
             </div>
 
@@ -93,8 +93,8 @@ export default async function HomePage() {
                   <p className="text-sm text-zinc-400">You need an @smail.iitm.ac.in account to trade.</p>
                   <Link
                     href="/login"
-                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:brightness-110"
-                    style={{ background: '#f59e0b' }}
+                    className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+                    style={{ background: 'var(--color-accent)' }}
                   >
                     Sign in →
                   </Link>

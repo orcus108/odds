@@ -52,7 +52,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
-          <div className="text-4xl font-black tracking-tight" style={{ color: '#f59e0b' }}>
+          <div className="text-4xl font-black tracking-tight" style={{ color: 'var(--color-accent)' }}>
             Odds
           </div>
           <p className="text-zinc-400 text-sm">One last thing</p>
@@ -74,7 +74,7 @@ export default function OnboardingPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="e.g. priya_cs23"
                 maxLength={20}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-amber-500/60 transition"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition"
                 autoFocus
               />
               {error && (
@@ -88,15 +88,15 @@ export default function OnboardingPage() {
             <button
               type="submit"
               disabled={loading || username.trim().length < 3}
-              className="w-full rounded-xl py-3 text-sm font-semibold text-zinc-900 transition disabled:opacity-40"
-              style={{ background: '#f59e0b' }}
+              className="w-full rounded-xl py-3 text-sm font-semibold text-white transition disabled:opacity-40"
+              style={{ background: 'var(--color-accent)' }}
             >
               {loading ? 'Saving…' : 'Get started →'}
             </button>
           </form>
 
           <p className="text-xs text-zinc-500 text-center">
-            You&apos;ll start with <span className="text-amber-400 font-semibold">1000 OC</span> to trade with
+            You&apos;ll start with <span className="text-accent font-semibold">10,000 OC</span> to trade with
           </p>
         </div>
       </div>

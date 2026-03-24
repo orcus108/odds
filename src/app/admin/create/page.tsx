@@ -33,7 +33,7 @@ export default function CreateMarketPage() {
                 name="description"
                 rows={3}
                 placeholder="Provide context for this market..."
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-amber-500/60 transition resize-none"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition resize-none"
               />
             </div>
 
@@ -43,7 +43,7 @@ export default function CreateMarketPage() {
                 name="resolution_criteria"
                 rows={3}
                 placeholder="How will this market be resolved? E.g. 'Resolves YES if the official placement report shows ≥1000 offers'"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-amber-500/60 transition resize-none"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition resize-none"
               />
             </div>
 
@@ -53,7 +53,7 @@ export default function CreateMarketPage() {
                 <select
                   name="category"
                   defaultValue="Other"
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 outline-none focus:border-amber-500/60 transition"
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 outline-none focus:border-accent/60 transition"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -109,8 +109,8 @@ export default function CreateMarketPage() {
           <div className="flex gap-3">
             <button
               type="submit"
-              className="flex-1 rounded-xl py-3 text-sm font-semibold text-zinc-900 transition hover:brightness-110"
-              style={{ background: '#f59e0b' }}
+              className="flex-1 rounded-xl py-3 text-sm font-semibold text-white transition hover:brightness-110"
+              style={{ background: 'var(--color-accent)' }}
             >
               Create market
             </button>
@@ -148,7 +148,7 @@ function Field({
         name={name}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-amber-500/60 transition"
+        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition"
       />
     </div>
   )

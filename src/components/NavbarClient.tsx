@@ -27,7 +27,7 @@ export default function NavbarClient({ user, userData }: Props) {
   return (
     <div className="flex items-center gap-3">
       <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm">
-        <span className="text-amber-400 font-semibold">{userData?.balance_oc?.toLocaleString() ?? '…'}</span>
+        <span className="text-accent font-semibold">{userData?.balance_oc?.toLocaleString() ?? '…'}</span>
         <span className="text-zinc-500">OC</span>
       </div>
       <Link

@@ -194,7 +194,7 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-zinc-500">
-                        <span className="text-amber-400">{trade.amount_oc.toLocaleString()} OC</span>
+                        <span className="text-accent">{trade.amount_oc.toLocaleString()} OC</span>
                         <span className="text-xs">{timeAgo(trade.created_at)}</span>
                       </div>
                     </div>
@@ -221,8 +221,8 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
               <p className="text-sm text-zinc-400">You need an @smail.iitm.ac.in account to trade.</p>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-zinc-900 transition hover:brightness-110"
-                style={{ background: '#f59e0b' }}
+                className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+                style={{ background: 'var(--color-accent)' }}
               >
                 Sign in →
               </Link>

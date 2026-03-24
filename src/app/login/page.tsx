@@ -32,7 +32,7 @@ function LoginContent() {
       <div className="w-full max-w-sm space-y-8">
         {/* Logo */}
         <div className="text-center space-y-2">
-          <div className="text-5xl font-black tracking-tight" style={{ color: '#f59e0b' }}>
+          <div className="text-5xl font-black tracking-tight" style={{ color: 'var(--color-accent)' }}>
             Odds
           </div>
           <p className="text-zinc-400 text-sm">
@@ -74,15 +74,15 @@ function LoginContent() {
           <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">What is Odds?</p>
           <ul className="space-y-2 text-sm text-zinc-400">
             <li className="flex items-start gap-2">
-              <span style={{ color: '#f59e0b' }}>→</span>
+              <span style={{ color: 'var(--color-accent)' }}>→</span>
               Browse markets on campus events, placements, sports, and more
             </li>
             <li className="flex items-start gap-2">
-              <span style={{ color: '#f59e0b' }}>→</span>
+              <span style={{ color: 'var(--color-accent)' }}>→</span>
               Trade YES or NO using free Oddcoins (OC) — no real money
             </li>
             <li className="flex items-start gap-2">
-              <span style={{ color: '#f59e0b' }}>→</span>
+              <span style={{ color: 'var(--color-accent)' }}>→</span>
               Climb the leaderboard by being right
             </li>
           </ul>

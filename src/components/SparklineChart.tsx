@@ -44,7 +44,7 @@ export default function SparklineChart({ data, height = 48, showLabels = false }
   const start = data[0]
   const end = data[data.length - 1]
   const delta = end - start
-  const color = delta > 1 ? '#4ade80' : delta < -1 ? '#f87171' : '#f59e0b'
+  const color = delta > 1 ? '#4ade80' : delta < -1 ? '#f87171' : 'var(--color-accent)'
   const deltaColor = delta > 1 ? 'text-green-400' : delta < -1 ? 'text-red-400' : 'text-zinc-500'
 
   const linePoints = data.map((v, i) => `${toX(i)},${toY(v)}`).join(' ')
