@@ -1,57 +1,86 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
+import Link from 'next/link'
 
 export const revalidate = 0
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  })
-}
-
 export default async function ProfilePage() {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: userData } = await supabase
-    .from('users')
-    .select('username, balance_oc, created_at')
-    .eq('id', user.id)
-    .single()
+  const [{ data: userData }, { data: trades }, { data: payouts }] = await Promise.all([
+    supabase.from('users').select('username, balance_oc, created_at').eq('id', user.id).single(),
+    supabase.from('trades').select('id, position, amount_oc, created_at, markets(id, title, status, outcome)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+    supabase.from('payouts').select('id, amount_oc, created_at, markets(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+  ])
 
   if (!userData) redirect('/login')
-
-  const { count: tradeCount } = await supabase
-    .from('trades')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
 
   return (
     <div className="min-h-screen">
       <Navbar />
+      <main className="max-w-lg mx-auto px-4 py-8 space-y-8">
 
-      <main className="max-w-lg mx-auto px-4 py-10 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-100">{userData.username ?? 'Anonymous'}</h1>
-          <p className="text-sm text-zinc-500 mt-1">Joined {formatDate(userData.created_at)}</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-100">{userData.username}</h1>
+            <p className="text-sm text-zinc-500 mt-0.5">
+              {new Date(userData.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+          <div className="text-right">
             <div className="text-2xl font-black text-accent">{userData.balance_oc.toLocaleString()}</div>
-            <div className="text-xs text-zinc-500 mt-1">Oddcoins</div>
-          </div>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-            <div className="text-2xl font-bold text-zinc-100">{tradeCount ?? 0}</div>
-            <div className="text-xs text-zinc-500 mt-1">Trades placed</div>
+            <div className="text-xs text-zinc-500">OC</div>
           </div>
         </div>
+
+        {/* Trades */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Trade history</h2>
+          {!trades?.length ? (
+            <p className="text-sm text-zinc-500">No trades yet. <Link href="/" className="text-accent">Browse markets →</Link></p>
+          ) : (
+            <div className="space-y-2">
+              {trades.map((t) => {
+                const resolved = t.markets?.status === 'resolved'
+                const won = resolved && t.markets?.outcome === t.position
+                const lost = resolved && t.markets?.outcome !== t.position
+                return (
+                  <div key={t.id} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${t.position === 'yes' ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                      {t.position.toUpperCase()}
+                    </span>
+                    <Link href={`/market/${t.markets?.id ?? ''}`} className="flex-1 text-sm text-zinc-300 truncate hover:text-zinc-100">
+                      {t.markets?.title ?? 'Unknown market'}
+                    </Link>
+                    <span className="text-sm text-accent font-medium shrink-0">{t.amount_oc.toLocaleString()} OC</span>
+                    {won && <span className="text-xs text-green-400 shrink-0">Won</span>}
+                    {lost && <span className="text-xs text-red-400 shrink-0">Lost</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Payouts */}
+        {(payouts?.length ?? 0) > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Payouts received</h2>
+            <div className="space-y-2">
+              {payouts!.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3">
+                  <span className="text-sm text-zinc-300 truncate">{p.markets?.title}</span>
+                  <span className="text-sm text-green-400 font-semibold shrink-0 ml-3">+{p.amount_oc.toLocaleString()} OC</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
       </main>
     </div>
   )
