@@ -261,50 +261,6 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
               </div>
             )}
 
-            {/* Activity feed */}
-            <div className="space-y-3">
-              <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wide">Recent trades</h2>
-              {activity.length === 0 ? (
-                <p className="text-zinc-500 text-sm">No trades yet. Be the first!</p>
-              ) : (
-                <div className="space-y-2">
-                  {activity.map((trade) => {
-                    const matchedOption = isMulti ? options.find(o => o.id === trade.position) : null
-                    const positionLabel = isMulti
-                      ? (matchedOption?.label ?? trade.position.slice(0, 8))
-                      : trade.position.toUpperCase()
-                    const badgeColor = isMulti
-                      ? matchedOption?.color ?? '#6366f1'
-                      : trade.position === 'yes' ? '#22c55e' : '#ef4444'
-                    return (
-                      <div
-                        key={trade.id}
-                        className="flex items-center justify-between text-sm py-2 border-b border-zinc-800"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-xs font-bold rounded px-1.5 py-0.5"
-                            style={{
-                              color: badgeColor,
-                              backgroundColor: `${badgeColor}18`,
-                            }}
-                          >
-                            {positionLabel}
-                          </span>
-                          <span className="text-zinc-300">
-                            {trade.users?.username ?? 'Anonymous'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-zinc-500">
-                          <span className="text-accent">{trade.amount_oc.toLocaleString()} OC</span>
-                          <span className="text-xs">{timeAgo(trade.created_at)}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Right: Trade panel */}
@@ -315,6 +271,51 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
               userBalance={userBalance}
               isAuthenticated={!!user}
             />
+          </div>
+
+          {/* Activity feed — below TradePanel on mobile, below market info on desktop */}
+          <div className="lg:col-span-2 space-y-3">
+            <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wide">Recent trades</h2>
+            {activity.length === 0 ? (
+              <p className="text-zinc-500 text-sm">No trades yet. Be the first!</p>
+            ) : (
+              <div className="space-y-2">
+                {activity.map((trade) => {
+                  const matchedOption = isMulti ? options.find(o => o.id === trade.position) : null
+                  const positionLabel = isMulti
+                    ? (matchedOption?.label ?? trade.position.slice(0, 8))
+                    : trade.position.toUpperCase()
+                  const badgeColor = isMulti
+                    ? matchedOption?.color ?? '#6366f1'
+                    : trade.position === 'yes' ? '#22c55e' : '#ef4444'
+                  return (
+                    <div
+                      key={trade.id}
+                      className="flex items-center justify-between text-sm py-2 border-b border-zinc-800"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="text-xs font-bold rounded px-1.5 py-0.5"
+                          style={{
+                            color: badgeColor,
+                            backgroundColor: `${badgeColor}18`,
+                          }}
+                        >
+                          {positionLabel}
+                        </span>
+                        <span className="text-zinc-300">
+                          {trade.users?.username ?? 'Anonymous'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-zinc-500">
+                        <span className="text-accent">{trade.amount_oc.toLocaleString()} OC</span>
+                        <span className="text-xs">{timeAgo(trade.created_at)}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
