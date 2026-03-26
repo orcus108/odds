@@ -18,7 +18,7 @@ export default async function AdminPage() {
   const { data: markets } = await supabase
     .from('markets')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('closes_at', { ascending: true })
 
   const allMarkets = (markets ?? []) as Market[]
 

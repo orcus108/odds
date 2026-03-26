@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
-import MarketCard from '@/components/MarketCard'
+import MarketsSortableGrid from '@/components/MarketsSortableGrid'
 import { redirect } from 'next/navigation'
 import type { Market, MarketOption } from '@/lib/types'
 
@@ -54,11 +54,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ name:
             <p className="text-sm text-zinc-500 mt-1">Check back soon.</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {openMarkets.map((market) => (
-              <MarketCard key={market.id} market={market} options={optionsByMarket[market.id]} />
-            ))}
-          </div>
+          <MarketsSortableGrid markets={openMarkets} optionsByMarket={optionsByMarket} />
         )}
       </main>
     </div>

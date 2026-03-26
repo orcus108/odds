@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
+import BackButton from '@/components/BackButton'
+import ScrollToContent from '@/components/ScrollToContent'
 import ProbabilityBar from '@/components/ProbabilityBar'
 import TradePanel from '@/components/TradePanel'
 import SparklineChart from '@/components/SparklineChart'
@@ -110,8 +112,12 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-4 py-10">
-        <div className="relative">
+      <main className="max-w-5xl mx-auto px-4 pt-4 pb-10 sm:py-10">
+        <div className="mb-4">
+          <BackButton />
+        </div>
+        <ScrollToContent id="market-content" />
+        <div id="market-content" className="relative scroll-mt-14">
         <div className={`grid gap-8 lg:grid-cols-3${!user ? ' blur-sm pointer-events-none select-none' : ''}`}>
           {/* Left: Market info */}
           <div className="lg:col-span-2 space-y-6">

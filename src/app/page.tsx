@@ -1,8 +1,9 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
 import MarketCard from '@/components/MarketCard'
+import MarketsSortableGrid from '@/components/MarketsSortableGrid'
 import type { Market, MarketOption } from '@/lib/types'
+import Link from 'next/link'
 
 export const revalidate = 60
 
@@ -139,30 +140,15 @@ export default async function HomePage() {
                 <p className="text-sm text-zinc-500 mt-1">Check back soon.</p>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {specialCategories.map((cat) => {
-                  const count = openMarkets.filter(m => m.category === cat).length
-                  return (
-                    <Link
-                      key={cat}
-                      href={`/category/${encodeURIComponent(cat)}`}
-                      className="block rounded-2xl border border-accent/30 bg-accent/5 p-5 hover:border-accent/60 hover:bg-accent/10 transition group"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-xs text-accent/70 font-medium uppercase tracking-widest">Special Event</p>
-                          <p className="text-xl font-bold text-zinc-100 group-hover:text-white transition">{cat}</p>
-                          <p className="text-sm text-zinc-400">{count} active market{count !== 1 ? 's' : ''}</p>
-                        </div>
-                        <div className="text-accent/50 group-hover:text-accent transition text-2xl">→</div>
-                      </div>
-                    </Link>
-                  )
-                })}
-                {standardMarkets.map((market) => (
-                  <MarketCard key={market.id} market={market} sparkline={sparklines[market.id]} options={optionsByMarket[market.id]} />
-                ))}
-              </div>
+              <MarketsSortableGrid
+                markets={standardMarkets}
+                optionsByMarket={optionsByMarket}
+                sparklines={sparklines}
+                specialCategories={specialCategories.map(cat => ({
+                  name: cat,
+                  count: openMarkets.filter(m => m.category === cat).length,
+                }))}
+              />
             )}
             <ClosedMarkets />
           </div>
