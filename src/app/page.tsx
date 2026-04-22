@@ -112,7 +112,7 @@ export default async function HomePage() {
                 <ClosedMarkets />
               </div>
 
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="fixed inset-0 flex items-center justify-center z-50">
                 <div className="text-center space-y-3 bg-zinc-950/80 backdrop-blur-sm border border-zinc-800 rounded-2xl px-8 py-6">
                   <p className="text-zinc-100 font-semibold">Sign in to access markets</p>
                   <p className="text-sm text-zinc-400">You need an @smail.iitm.ac.in account to trade.</p>
