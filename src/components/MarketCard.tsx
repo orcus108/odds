@@ -9,13 +9,13 @@ const STATUS_BADGE: Record<string, { label: string; color: string }> = {
   resolved: { label: 'Resolved', color: 'text-accent bg-accent/10 border-accent/20' },
 }
 
-function timeLeft(closesAt: string) {
+function timeLeft(closesAt: string): { text: string; urgent: boolean } {
   const diff = new Date(closesAt).getTime() - Date.now()
-  if (diff <= 0) return 'Ended'
+  if (diff <= 0) return { text: 'Ended', urgent: false }
   const days = Math.floor(diff / 86400000)
-  if (days > 0) return `${days}d left`
+  if (days > 0) return { text: `${days}d left`, urgent: false }
   const hours = Math.floor(diff / 3600000)
-  return `${hours}h left`
+  return { text: `${hours}h left`, urgent: true }
 }
 
 interface Props {
@@ -28,13 +28,20 @@ export default function MarketCard({ market, sparkline, options }: Props) {
   const isMulti = market.market_type === 'multi'
   const badge = STATUS_BADGE[market.status]
 
-  // Binary stats
   const binaryTotal = market.yes_pool + market.no_pool
   const yesPct = binaryTotal === 0 ? 50 : Math.round((market.yes_pool / binaryTotal) * 100)
 
-  // Multi stats
   const multiTotal = isMulti && options ? options.reduce((s, o) => s + o.pool, 0) : 0
   const total = isMulti ? multiTotal : binaryTotal
+
+  const { text: timeLeftText, urgent: timeUrgent } = timeLeft(market.closes_at)
+
+  // Direction arrow from sparkline: ↑ if last > first by >1pp, ↓ if lower
+  const sparkDir = sparkline && sparkline.length >= 2
+    ? sparkline[sparkline.length - 1] - sparkline[0]
+    : 0
+  const sparkArrow = sparkDir > 1 ? '↑' : sparkDir < -1 ? '↓' : null
+  const sparkArrowColor = sparkDir > 1 ? 'text-green-400' : 'text-red-400'
 
   return (
     <Link
@@ -60,7 +67,12 @@ export default function MarketCard({ market, sparkline, options }: Props) {
             <div className="text-sm font-semibold text-zinc-400">{options?.length ?? 0} options</div>
           ) : (
             <>
-              <div className="text-2xl font-bold text-green-400">{yesPct}%</div>
+              <div className="flex items-baseline gap-1 justify-end">
+                <div className="text-2xl font-bold text-green-400">{yesPct}%</div>
+                {sparkArrow && (
+                  <span className={`text-sm font-bold ${sparkArrowColor}`}>{sparkArrow}</span>
+                )}
+              </div>
               <div className="text-xs text-zinc-500">chance YES</div>
             </>
           )}
@@ -105,7 +117,9 @@ export default function MarketCard({ market, sparkline, options }: Props) {
         <span>
           <span className="text-zinc-300 font-medium">{total.toLocaleString()} OC</span> volume
         </span>
-        <span>{timeLeft(market.closes_at)}</span>
+        <span className={timeUrgent ? 'text-orange-400 font-medium' : ''}>
+          {timeLeftText}
+        </span>
       </div>
     </Link>
   )

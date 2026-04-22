@@ -13,13 +13,15 @@ const ERROR_MESSAGES: Record<string, string> = {
 function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
+  const next = searchParams.get('next') ?? '/'
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/'
 
   async function handleSignIn() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`,
         queryParams: {
           hd: 'smail.iitm.ac.in',
         },

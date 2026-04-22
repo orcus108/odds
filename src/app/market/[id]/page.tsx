@@ -331,7 +331,7 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
               <p className="text-zinc-100 font-semibold">Sign in to view this market</p>
               <p className="text-sm text-zinc-400">You need an @smail.iitm.ac.in account to trade.</p>
               <Link
-                href="/login"
+                href={`/login?next=${encodeURIComponent(`/market/${m.id}`)}`}
                 className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
                 style={{ background: 'var(--color-accent)' }}
               >

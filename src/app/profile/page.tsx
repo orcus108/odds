@@ -6,25 +6,53 @@ import { withdrawProposal } from '@/actions/market'
 
 export const revalidate = 0
 
+const STARTING_BALANCE = 10000
+
 export default async function ProfilePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  type TradeRow = { id: string; position: string; amount_oc: number; created_at: string; markets: { id: string; title: string; status: string; outcome: string | null } | null }
+  type TradeRow = {
+    id: string
+    market_id: string
+    position: string
+    amount_oc: number
+    created_at: string
+    markets: {
+      id: string
+      title: string
+      status: string
+      outcome: string | null
+      yes_pool: number
+      no_pool: number
+      market_type: string
+    } | null
+  }
   type PayoutRow = { id: string; amount_oc: number; created_at: string; markets: { title: string } | null }
   type OptionRow = { id: string; label: string }
+  type ProposalRow = { id: string; title: string; market_type: string; category: string; created_at: string }
+  type ApprovedRow = { id: string; title: string; status: string; market_type: string; category: string; created_at: string }
 
-  const [{ data: userData }, { data: rawTrades }, { data: rawPayouts }, { data: rawProposals }] = await Promise.all([
+  const [{ data: userData }, { data: rawTrades }, { data: rawPayouts }, { data: rawProposals }, { data: rawApproved }] = await Promise.all([
     supabase.from('users').select('username, balance_oc, created_at').eq('id', user.id).single(),
-    supabase.from('trades').select('id, position, amount_oc, created_at, markets(id, title, status, outcome)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+    supabase
+      .from('trades')
+      .select('id, market_id, position, amount_oc, created_at, markets(id, title, status, outcome, yes_pool, no_pool, market_type)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100),
     supabase.from('payouts').select('id, amount_oc, created_at, markets(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
     supabase.from('markets').select('id, title, market_type, category, created_at').eq('created_by', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
+    supabase.from('markets').select('id, title, status, market_type, category, created_at').eq('created_by', user.id).neq('status', 'pending').order('created_at', { ascending: false }).limit(20),
   ])
 
   const trades = rawTrades as unknown as TradeRow[] | null
+  const payouts = rawPayouts as unknown as PayoutRow[] | null
+  const proposals = rawProposals as unknown as ProposalRow[] | null
+  const approved = rawApproved as unknown as ApprovedRow[] | null
 
-  // Collect all unique option IDs (UUIDs) from multi-choice trades
+  // Collect option labels for multi-choice trades
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const optionIds = [...new Set((trades ?? []).map(t => t.position).filter(p => uuidRegex.test(p)))]
   let optionLabels: Record<string, string> = {}
@@ -33,11 +61,45 @@ export default async function ProfilePage() {
     for (const o of (options as OptionRow[] | null) ?? []) optionLabels[o.id] = o.label
   }
 
-  const payouts = rawPayouts as unknown as PayoutRow[] | null
-  type ProposalRow = { id: string; title: string; market_type: string; category: string; created_at: string }
-  const proposals = rawProposals as unknown as ProposalRow[] | null
-
   if (!userData) redirect('/login')
+
+  // --- Computed stats ---
+
+  const netProfit = userData.balance_oc - STARTING_BALANCE
+
+  const resolvedTrades = (trades ?? []).filter(t => t.markets?.status === 'resolved')
+  const wonTrades = resolvedTrades.filter(t => t.markets?.outcome === t.position)
+  const winRate = resolvedTrades.length > 0 ? Math.round(wonTrades.length / resolvedTrades.length * 100) : null
+
+  const bestPayout = payouts && payouts.length > 0 ? Math.max(...payouts.map(p => p.amount_oc)) : null
+
+  // --- Open positions: group trades in open markets by market ---
+  type OpenPosition = {
+    marketId: string
+    marketTitle: string
+    bets: Record<string, number>  // position → total OC bet
+    yesPct: number | null          // null for multi markets
+    marketType: string
+  }
+
+  const openPosMap: Record<string, OpenPosition> = {}
+  for (const trade of trades ?? []) {
+    const mkt = trade.markets
+    if (!mkt || mkt.status !== 'open') continue
+    if (!openPosMap[mkt.id]) {
+      const binaryTotal = mkt.yes_pool + mkt.no_pool
+      openPosMap[mkt.id] = {
+        marketId: mkt.id,
+        marketTitle: mkt.title,
+        bets: {},
+        yesPct: mkt.market_type === 'multi' ? null : (binaryTotal === 0 ? 50 : Math.round(mkt.yes_pool / binaryTotal * 100)),
+        marketType: mkt.market_type,
+      }
+    }
+    const pos = trade.position
+    openPosMap[mkt.id].bets[pos] = (openPosMap[mkt.id].bets[pos] ?? 0) + trade.amount_oc
+  }
+  const openPositions = Object.values(openPosMap)
 
   return (
     <div className="min-h-screen">
@@ -54,16 +116,118 @@ export default async function ProfilePage() {
           </div>
           <div className="text-right">
             <div className="text-2xl font-black text-accent">{userData.balance_oc.toLocaleString()}</div>
-            <div className="text-xs text-zinc-500">OC</div>
+            <div className="text-xs text-zinc-500">OC balance</div>
           </div>
         </div>
 
-        {/* Pending proposals */}
-        {(proposals?.length ?? 0) > 0 && (
+        {/* Stats bar */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-center">
+            <div className={`text-lg font-bold ${netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {netProfit >= 0 ? '+' : ''}{netProfit.toLocaleString()}
+            </div>
+            <div className="text-xs text-zinc-500 mt-0.5">net profit</div>
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-center">
+            {winRate !== null ? (
+              <>
+                <div className="text-lg font-bold text-zinc-100">{winRate}%</div>
+                <div className="text-xs text-zinc-500 mt-0.5">win rate</div>
+              </>
+            ) : (
+              <>
+                <div className="text-lg font-bold text-zinc-600">—</div>
+                <div className="text-xs text-zinc-500 mt-0.5">win rate</div>
+              </>
+            )}
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-center">
+            {bestPayout !== null ? (
+              <>
+                <div className="text-lg font-bold text-accent">{bestPayout.toLocaleString()}</div>
+                <div className="text-xs text-zinc-500 mt-0.5">best payout</div>
+              </>
+            ) : (
+              <>
+                <div className="text-lg font-bold text-zinc-600">—</div>
+                <div className="text-xs text-zinc-500 mt-0.5">best payout</div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Open positions */}
+        {openPositions.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Pending proposals</h2>
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Open positions</h2>
             <div className="space-y-2">
-              {proposals!.map((p) => {
+              {openPositions.map((pos) => {
+                const entries = Object.entries(pos.bets)
+                return (
+                  <Link
+                    key={pos.marketId}
+                    href={`/market/${pos.marketId}`}
+                    className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 hover:border-zinc-700 transition"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-zinc-200 truncate">{pos.marketTitle}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {entries.map(([p, amt]) => (
+                          <span
+                            key={p}
+                            className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                              p === 'yes' ? 'text-green-400 bg-green-500/10'
+                              : p === 'no' ? 'text-red-400 bg-red-500/10'
+                              : 'text-zinc-300 bg-zinc-700/50'
+                            }`}
+                          >
+                            {uuidRegex.test(p) ? (optionLabels[p] ?? p.slice(0, 8)) : p.toUpperCase()}
+                            {' · '}{amt.toLocaleString()} OC
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {pos.yesPct !== null && (
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-bold text-green-400">{pos.yesPct}%</div>
+                        <div className="text-xs text-zinc-500">YES now</div>
+                      </div>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* My proposals (pending + live) */}
+        {((proposals?.length ?? 0) > 0 || (approved?.length ?? 0) > 0) && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">My proposals</h2>
+            <div className="space-y-2">
+              {/* Live / approved proposals */}
+              {approved?.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/market/${p.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 hover:border-zinc-700 transition"
+                >
+                  <span className={`text-xs font-semibold border rounded-full px-2 py-0.5 shrink-0 ${
+                    p.status === 'open'
+                      ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                      : p.status === 'resolved'
+                      ? 'text-accent bg-accent/10 border-accent/20'
+                      : 'text-zinc-400 bg-zinc-800 border-zinc-700'
+                  }`}>
+                    {p.status === 'open' ? 'live' : p.status}
+                  </span>
+                  <span className="flex-1 text-sm text-zinc-300 truncate">{p.title}</span>
+                  <span className="text-xs text-zinc-500 shrink-0">{p.category}</span>
+                </Link>
+              ))}
+
+              {/* Pending proposals */}
+              {proposals?.map((p) => {
                 const withdrawAction = withdrawProposal.bind(null, p.id)
                 return (
                   <div key={p.id} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-zinc-900 px-4 py-3">

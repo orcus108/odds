@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { executeTrade } from '@/actions/trade'
 import type { Market, MarketOption } from '@/lib/types'
 
@@ -11,7 +12,10 @@ interface Props {
   isAuthenticated: boolean
 }
 
+const PRESETS = [25, 50, 100, 250]
+
 export default function TradePanel({ market, options, userBalance, isAuthenticated }: Props) {
+  const router = useRouter()
   const isMulti = market.market_type === 'multi'
 
   const [position, setPosition] = useState<string>(
@@ -23,7 +27,6 @@ export default function TradePanel({ market, options, userBalance, isAuthenticat
 
   const amountNum = parseInt(amount) || 0
 
-  // Total pool across all options (multi) or yes+no (binary)
   const totalPool = isMulti
     ? (options ?? []).reduce((s, o) => s + o.pool, 0)
     : market.yes_pool + market.no_pool
@@ -35,11 +38,9 @@ export default function TradePanel({ market, options, userBalance, isAuthenticat
     return newTotal > 0 && newPool > 0 ? Math.floor((amt / newPool) * newTotal) : 0
   }
 
-  // For binary
   const yesPayout = calcPayout(market.yes_pool, amountNum)
   const noPayout = calcPayout(market.no_pool, amountNum)
 
-  // For current selection
   const selectedPool = isMulti
     ? (options?.find(o => o.id === position)?.pool ?? 0)
     : position === 'yes' ? market.yes_pool : market.no_pool
@@ -60,6 +61,7 @@ export default function TradePanel({ market, options, userBalance, isAuthenticat
       } else {
         setResult({ success: true })
         setAmount('')
+        router.refresh()
       }
     })
   }
@@ -172,26 +174,44 @@ export default function TradePanel({ market, options, userBalance, isAuthenticat
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <label className="text-xs text-zinc-400">Amount (OC)</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={1}
-              max={userBalance ?? 1000}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="50"
-              className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-accent/60 transition"
-            />
+          <div className="flex gap-1.5">
+            {PRESETS.map(p => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setAmount(String(p))}
+                className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition border ${
+                  amountNum === p
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
             <button
               type="button"
               onClick={() => setAmount(String(userBalance ?? 0))}
-              className="text-xs text-zinc-500 hover:text-accent transition px-2"
+              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition border ${
+                userBalance !== null && amountNum === userBalance && userBalance > 0
+                  ? 'border-accent bg-accent/10 text-accent'
+                  : 'border-zinc-700 bg-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+              }`}
             >
               Max
             </button>
           </div>
+          <input
+            type="number"
+            min={1}
+            max={userBalance ?? 1000}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="or type amount…"
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-accent/60 transition"
+          />
           {userBalance !== null && (
             <p className="text-xs text-zinc-500">
               Balance: <span className="text-accent">{userBalance.toLocaleString()} OC</span>
