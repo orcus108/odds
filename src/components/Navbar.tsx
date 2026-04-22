@@ -29,6 +29,9 @@ export default async function Navbar() {
           <div className="hidden sm:flex items-center gap-4 text-sm text-zinc-400">
             <Link href="/" className="hover:text-zinc-100 transition">Markets</Link>
             <Link href="/leaderboard" className="hover:text-zinc-100 transition">Leaderboard</Link>
+            {user && !userData?.is_admin && (
+              <Link href="/propose" className="hover:text-zinc-100 transition">Propose</Link>
+            )}
             {userData?.is_admin && (
               <Link href="/admin" className="hover:text-zinc-100 transition">Admin</Link>
             )}

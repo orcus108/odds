@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
+import MarketCard from '@/components/MarketCard'
 import MarketsSortableGrid from '@/components/MarketsSortableGrid'
 import { redirect } from 'next/navigation'
 import type { Market, MarketOption } from '@/lib/types'
@@ -24,7 +25,17 @@ export default async function CategoryPage({ params }: { params: Promise<{ name:
 
   const openMarkets = (markets ?? []) as Market[]
 
-  const multiIds = openMarkets.filter(m => m.market_type === 'multi').map(m => m.id)
+  const { data: closedData } = await supabase
+    .from('markets')
+    .select('*')
+    .eq('category', category)
+    .in('status', ['closed', 'resolved'])
+    .order('closes_at', { ascending: false })
+
+  const closedMarkets = (closedData ?? []) as Market[]
+
+  const allMarkets = [...openMarkets, ...closedMarkets]
+  const multiIds = allMarkets.filter(m => m.market_type === 'multi').map(m => m.id)
   const optionsByMarket: Record<string, MarketOption[]> = {}
   if (multiIds.length > 0) {
     const { data: allOptions } = await supabase
@@ -55,6 +66,17 @@ export default async function CategoryPage({ params }: { params: Promise<{ name:
           </div>
         ) : (
           <MarketsSortableGrid markets={openMarkets} optionsByMarket={optionsByMarket} />
+        )}
+
+        {closedMarkets.length > 0 && (
+          <div className="mt-12 space-y-4">
+            <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wide">Past markets</h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {closedMarkets.map((market) => (
+                <MarketCard key={market.id} market={market} options={optionsByMarket[market.id]} />
+              ))}
+            </div>
+          </div>
         )}
       </main>
     </div>

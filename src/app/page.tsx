@@ -164,6 +164,7 @@ async function ClosedMarkets() {
     .from('markets')
     .select('*')
     .in('status', ['closed', 'resolved'])
+    .in('category', STANDARD_CATEGORIES)
     .order('created_at', { ascending: false })
     .limit(6)
 

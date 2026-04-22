@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
 import Link from 'next/link'
+import { withdrawProposal } from '@/actions/market'
 
 export const revalidate = 0
 
@@ -14,10 +15,11 @@ export default async function ProfilePage() {
   type PayoutRow = { id: string; amount_oc: number; created_at: string; markets: { title: string } | null }
   type OptionRow = { id: string; label: string }
 
-  const [{ data: userData }, { data: rawTrades }, { data: rawPayouts }] = await Promise.all([
+  const [{ data: userData }, { data: rawTrades }, { data: rawPayouts }, { data: rawProposals }] = await Promise.all([
     supabase.from('users').select('username, balance_oc, created_at').eq('id', user.id).single(),
     supabase.from('trades').select('id, position, amount_oc, created_at, markets(id, title, status, outcome)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
     supabase.from('payouts').select('id, amount_oc, created_at, markets(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+    supabase.from('markets').select('id, title, market_type, category, created_at').eq('created_by', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
   ])
 
   const trades = rawTrades as unknown as TradeRow[] | null
@@ -32,6 +34,8 @@ export default async function ProfilePage() {
   }
 
   const payouts = rawPayouts as unknown as PayoutRow[] | null
+  type ProposalRow = { id: string; title: string; market_type: string; category: string; created_at: string }
+  const proposals = rawProposals as unknown as ProposalRow[] | null
 
   if (!userData) redirect('/login')
 
@@ -53,6 +57,38 @@ export default async function ProfilePage() {
             <div className="text-xs text-zinc-500">OC</div>
           </div>
         </div>
+
+        {/* Pending proposals */}
+        {(proposals?.length ?? 0) > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Pending proposals</h2>
+            <div className="space-y-2">
+              {proposals!.map((p) => {
+                const withdrawAction = withdrawProposal.bind(null, p.id)
+                return (
+                  <div key={p.id} className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-zinc-900 px-4 py-3">
+                    <span className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-2 py-0.5 shrink-0">
+                      pending
+                    </span>
+                    <span className="flex-1 text-sm text-zinc-300 truncate">{p.title}</span>
+                    <span className="text-xs text-zinc-500 shrink-0">{p.category}</span>
+                    <form action={withdrawAction}>
+                      <button
+                        type="submit"
+                        className="text-xs text-zinc-600 hover:text-red-400 transition shrink-0"
+                        onClick={(e) => {
+                          if (!confirm('Withdraw this proposal?')) e.preventDefault()
+                        }}
+                      >
+                        Withdraw
+                      </button>
+                    </form>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Trades */}
         <section className="space-y-3">

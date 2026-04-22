@@ -1,4 +1,4 @@
-export type MarketStatus = 'open' | 'closed' | 'resolved'
+export type MarketStatus = 'open' | 'closed' | 'resolved' | 'pending'
 export type MarketType = 'binary' | 'multi'
 export type Position = string  // 'yes' | 'no' for binary; option UUID for multi
 export type MarketOutcome = string | null  // 'yes' | 'no' for binary; option UUID for multi
