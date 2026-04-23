@@ -27,7 +27,7 @@ export default function ShareButton({ title, marketId }: Props) {
   async function handleShare() {
     if (navigator.share) {
       try {
-        await navigator.share({ text: title, url })
+        await navigator.share({ text: `${title}\n${url}` })
       } catch {
         // user cancelled — do nothing
       }
