@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Navbar from '@/components/Navbar'
 import BackButton from '@/components/BackButton'
+import ShareButton from '@/components/ShareButton'
 import ScrollToContent from '@/components/ScrollToContent'
 import ProbabilityBar from '@/components/ProbabilityBar'
 import TradePanel from '@/components/TradePanel'
@@ -113,8 +114,9 @@ export default async function MarketPage({ params }: { params: Promise<{ id: str
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 pt-4 pb-10 sm:py-10">
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between relative z-10">
           <BackButton />
+          <ShareButton title={m.title} marketId={m.id} />
         </div>
         <ScrollToContent id="market-content" />
         <div id="market-content" className="relative scroll-mt-14">
